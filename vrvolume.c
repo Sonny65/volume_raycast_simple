@@ -52,7 +52,7 @@ interpolate_linear_ui8(const VRVOL* vol, glm::vec3 pt)
     
     float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
     float val100 =  ((uint8_t*)vol->data)[ind100]/MAX_UI8;
-    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+    float val110 =  ((uint8_t*)vol->data)[ind110]/MAX_UI8;
     float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
     float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
     float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
