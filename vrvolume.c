@@ -53,13 +53,27 @@ interpolate_linear_ui8(const VRVOL* vol, glm::vec3 pt)
     float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
     float val100 =  ((uint8_t*)vol->data)[ind100]/MAX_UI8;
     float val110 =  ((uint8_t*)vol->data)[ind110]/MAX_UI8;
-    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
-    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
-    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
-    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
-    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+    float val111 =  ((uint8_t*)vol->data)[ind111]/MAX_UI8;
+    float val010 =  ((uint8_t*)vol->data)[ind010]/MAX_UI8;
+    float val011 =  ((uint8_t*)vol->data)[ind011]/MAX_UI8;
+    float val001 =  ((uint8_t*)vol->data)[ind001]/MAX_UI8;
+    float val101 =  ((uint8_t*)vol->data)[ind101]/MAX_UI8;
 
-    float val =  ((uint8_t*)vol->data)[ind]/MAX_UI8;
+    float x = pt.x - (int)roundf(pt.x);
+    float y = pt.y - (int)roundf(pt.y);
+    float z = pt.z - (int)roundf(pt.z);
+
+    float val = (1-x)*(1-y)*(1-z)*val000;
+    val += x*(1-y)*(1-z)*val100;
+    val += x*y*(1-z)*val110;
+    val += x*y*z*val111;
+    val += (1-x)*y*(1-z)*val010;
+    val += (1-x)*y*z*val011;
+    val += (1-x)*(1-y)*z*val001;
+    val += x*(1-y)*z*val101;
+
+
+    // val =  ((uint8_t*)vol->data)[ind]/MAX_UI8;
     return val;
 }
 
