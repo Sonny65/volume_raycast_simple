@@ -24,6 +24,46 @@ interpolate_nearest_ui8(const VRVOL* vol, glm::vec3 pt)
 }
 
 /*
+ *  Returns the value of the nearest grid point to "pt"
+ */
+float
+interpolate_linear_ui8(const VRVOL* vol, glm::vec3 pt)
+{
+    if(pt.x < 0 || pt.y < 0 || pt.z < 0 ||
+       pt.x >= vol->gridx || pt.y >= vol->gridy || pt.z >= vol->gridz)
+    {
+        return 0.0; //this treats everything outside the volume as 0
+                    //there are other choices, but this will work for
+                    //most cases.
+    }
+
+    int ind = (int)roundf(pt.x);
+    ind += (int)roundf(pt.y)*(vol->gridx);
+    ind += (int)roundf(pt.z)*vol->gridx*vol->gridy;
+    
+    int ind000 = (int)roundf(pt.x) + (int)roundf(pt.y)*(vol->gridx) + (int)roundf(pt.z)*vol->gridx*vol->gridy;
+    int ind100 = (int)roundf(pt.x)+1 + (int)roundf(pt.y)*(vol->gridx) + (int)roundf(pt.z)*vol->gridx*vol->gridy;
+    int ind110 = (int)roundf(pt.x)+1 + ((int)roundf(pt.y)+1)*(vol->gridx) + (int)roundf(pt.z)*vol->gridx*vol->gridy;
+    int ind111 = (int)roundf(pt.x)+1 + ((int)roundf(pt.y)+1)*(vol->gridx) + ((int)roundf(pt.z)+1)*vol->gridx*vol->gridy;
+    int ind010 = (int)roundf(pt.x) + ((int)roundf(pt.y)+1)*(vol->gridx) + (int)roundf(pt.z)*vol->gridx*vol->gridy;
+    int ind011 = (int)roundf(pt.x) + ((int)roundf(pt.y)+1)*(vol->gridx) + ((int)roundf(pt.z)+1)*vol->gridx*vol->gridy;
+    int ind001 = (int)roundf(pt.x) + (int)roundf(pt.y)*(vol->gridx) + ((int)roundf(pt.z)+1)*vol->gridx*vol->gridy;
+    int ind101 = (int)roundf(pt.x)+1 + (int)roundf(pt.y)*(vol->gridx) + ((int)roundf(pt.z)+1)*vol->gridx*vol->gridy;
+    
+    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+    float val100 =  ((uint8_t*)vol->data)[ind100]/MAX_UI8;
+    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+    float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
+
+    float val =  ((uint8_t*)vol->data)[ind]/MAX_UI8;
+    return val;
+}
+
+/*
  * Returns the gradient at pt, this is not the most efficient
  * way to implement this function, but it will work.
  */
@@ -138,7 +178,7 @@ float vrv_interpolate(const VRVOL* vol, glm::vec3 pt)
 {
     switch(vol->type|vol->interp){
         case VRV_UINT8 | VI_NEAREST:
-            return interpolate_nearest_ui8(vol,pt);
+            return interpolate_linear_ui8(vol,pt);
         default:
             EPRINT("BAD VOLUME TYPE or INTERPOLATION METHOD\n");
             return 0;

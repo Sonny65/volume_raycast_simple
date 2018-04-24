@@ -11,7 +11,7 @@
 #define MIN_TF_VAL 0.0
 #define MAX_TF_VAL 1.0
 //window title
-const char *win_title = "Garrett's Sample Viewer";
+const char *win_title = "Yuhan's Sample Viewer";
 
 //current window dimensions
 int win_width = INIT_WIN_WIDTH;

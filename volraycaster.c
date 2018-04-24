@@ -123,6 +123,8 @@ void vrc_accumulate(const RAY *ray,float t0, float t1, float *out)
          ***/
         float val = vrv_interpolate(volume,pt);
 
+        // printf("%f\n", val);
+
 
         /*** This is where you would accumulate colors based on
          *** the opacity values returned from the transfer function.
