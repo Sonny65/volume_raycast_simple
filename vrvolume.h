@@ -36,6 +36,15 @@ struct VRVOL{
     VINTERP_T interp;
 };
 
+//return the gradient
+glm::vec3 gradient_nearest_ui8(const VRVOL*vol, glm::vec3 pt);
+glm::vec3 gradient_cubic_ui8(const VRVOL*vol, glm::vec3 pt);
+
+//factorial
+unsigned int factorial(unsigned int n);
+
+//B value
+float Bvalue(float x, int index, int range);
 
 //creates a new volume from raw input data,
 //by default assumes 8bit integers.

@@ -1,4 +1,5 @@
 #include "vrvolume.h"
+#include <math.h>
 
 #define MAX_UI8 255.0
 
@@ -24,7 +25,7 @@ interpolate_nearest_ui8(const VRVOL* vol, glm::vec3 pt)
 }
 
 /*
- *  Returns the value of the nearest grid point to "pt"
+ *  Returns the value of the linear interpolation
  */
 float
 interpolate_linear_ui8(const VRVOL* vol, glm::vec3 pt)
@@ -36,19 +37,15 @@ interpolate_linear_ui8(const VRVOL* vol, glm::vec3 pt)
                     //there are other choices, but this will work for
                     //most cases.
     }
-
-    int ind = (int)roundf(pt.x);
-    ind += (int)roundf(pt.y)*(vol->gridx);
-    ind += (int)roundf(pt.z)*vol->gridx*vol->gridy;
     
-    int ind000 = (int)roundf(pt.x) + (int)roundf(pt.y)*(vol->gridx) + (int)roundf(pt.z)*vol->gridx*vol->gridy;
-    int ind100 = (int)roundf(pt.x)+1 + (int)roundf(pt.y)*(vol->gridx) + (int)roundf(pt.z)*vol->gridx*vol->gridy;
-    int ind110 = (int)roundf(pt.x)+1 + ((int)roundf(pt.y)+1)*(vol->gridx) + (int)roundf(pt.z)*vol->gridx*vol->gridy;
-    int ind111 = (int)roundf(pt.x)+1 + ((int)roundf(pt.y)+1)*(vol->gridx) + ((int)roundf(pt.z)+1)*vol->gridx*vol->gridy;
-    int ind010 = (int)roundf(pt.x) + ((int)roundf(pt.y)+1)*(vol->gridx) + (int)roundf(pt.z)*vol->gridx*vol->gridy;
-    int ind011 = (int)roundf(pt.x) + ((int)roundf(pt.y)+1)*(vol->gridx) + ((int)roundf(pt.z)+1)*vol->gridx*vol->gridy;
-    int ind001 = (int)roundf(pt.x) + (int)roundf(pt.y)*(vol->gridx) + ((int)roundf(pt.z)+1)*vol->gridx*vol->gridy;
-    int ind101 = (int)roundf(pt.x)+1 + (int)roundf(pt.y)*(vol->gridx) + ((int)roundf(pt.z)+1)*vol->gridx*vol->gridy;
+    int ind000 = (int)floor(pt.x) + (int)floor(pt.y)*(vol->gridx) + (int)floor(pt.z)*vol->gridx*vol->gridy;
+    int ind100 = (int)floor(pt.x)+1 + (int)floor(pt.y)*(vol->gridx) + (int)floor(pt.z)*vol->gridx*vol->gridy;
+    int ind110 = (int)floor(pt.x)+1 + ((int)floor(pt.y)+1)*(vol->gridx) + (int)floor(pt.z)*vol->gridx*vol->gridy;
+    int ind111 = (int)floor(pt.x)+1 + ((int)floor(pt.y)+1)*(vol->gridx) + ((int)floor(pt.z)+1)*vol->gridx*vol->gridy;
+    int ind010 = (int)floor(pt.x) + ((int)floor(pt.y)+1)*(vol->gridx) + (int)floor(pt.z)*vol->gridx*vol->gridy;
+    int ind011 = (int)floor(pt.x) + ((int)floor(pt.y)+1)*(vol->gridx) + ((int)floor(pt.z)+1)*vol->gridx*vol->gridy;
+    int ind001 = (int)floor(pt.x) + (int)floor(pt.y)*(vol->gridx) + ((int)floor(pt.z)+1)*vol->gridx*vol->gridy;
+    int ind101 = (int)floor(pt.x)+1 + (int)floor(pt.y)*(vol->gridx) + ((int)floor(pt.z)+1)*vol->gridx*vol->gridy;
     
     float val000 =  ((uint8_t*)vol->data)[ind000]/MAX_UI8;
     float val100 =  ((uint8_t*)vol->data)[ind100]/MAX_UI8;
@@ -59,9 +56,9 @@ interpolate_linear_ui8(const VRVOL* vol, glm::vec3 pt)
     float val001 =  ((uint8_t*)vol->data)[ind001]/MAX_UI8;
     float val101 =  ((uint8_t*)vol->data)[ind101]/MAX_UI8;
 
-    float x = pt.x - (int)roundf(pt.x);
-    float y = pt.y - (int)roundf(pt.y);
-    float z = pt.z - (int)roundf(pt.z);
+    float x = pt.x - (int)floor(pt.x);
+    float y = pt.y - (int)floor(pt.y);
+    float z = pt.z - (int)floor(pt.z);
 
     float val = (1-x)*(1-y)*(1-z)*val000;
     val += x*(1-y)*(1-z)*val100;
@@ -72,8 +69,128 @@ interpolate_linear_ui8(const VRVOL* vol, glm::vec3 pt)
     val += (1-x)*(1-y)*z*val001;
     val += x*(1-y)*z*val101;
 
+    return val;
+}
 
-    // val =  ((uint8_t*)vol->data)[ind]/MAX_UI8;
+/*
+ *  Returns the value of the linear interpolation
+ */
+float
+interpolate_cubic_ui8(const VRVOL* vol, glm::vec3 pt)
+{
+
+    if(pt.x < 0 || pt.y < 0 || pt.z < 0 ||
+       pt.x >= vol->gridx || pt.y >= vol->gridy || pt.z >= vol->gridz)
+    {
+        return 0.0; //this treats everything outside the volume as 0
+                    //there are other choices, but this will work for
+                    //most cases.
+    }
+
+    glm::vec3 gradient[2][2][2];
+
+    for(int i = 0;i < 2;i++){
+        for(int j = 0;j < 2;j++){
+            for(int k = 0;k < 2;k++){
+                glm::vec3 tempgradient = gradient_nearest_ui8(vol,pt+glm::vec3(i,j,k));
+                gradient[i][j][k] = tempgradient;
+            }
+        }
+    }
+
+    float bvalue[4][4][4];
+
+    bvalue[0][0][0] = interpolate_nearest_ui8(vol,pt+glm::vec3(0,0,0));
+    bvalue[3][0][0] = interpolate_nearest_ui8(vol,pt+glm::vec3(1,0,0));
+    bvalue[3][3][0] = interpolate_nearest_ui8(vol,pt+glm::vec3(1,1,0));
+    bvalue[3][0][3] = interpolate_nearest_ui8(vol,pt+glm::vec3(1,0,1));
+    bvalue[0][3][0] = interpolate_nearest_ui8(vol,pt+glm::vec3(0,1,0));
+    bvalue[0][3][3] = interpolate_nearest_ui8(vol,pt+glm::vec3(0,1,1));
+    bvalue[0][0][3] = interpolate_nearest_ui8(vol,pt+glm::vec3(0,0,1));
+    bvalue[3][3][3] = interpolate_nearest_ui8(vol,pt+glm::vec3(1,1,1));
+
+
+    for(int i = 0;i < 2;i++){
+        for(int j = 0;j < 2;j++){
+            for(int k = 0;k < 2;k++){
+                bvalue[i][j][k] = bvalue[0][0][0] + i*1/3*gradient[0][0][0].x + j*1/3*gradient[0][0][0].y + k*1/3*gradient[0][0][0].z;
+            }
+        }
+    }
+
+    for(int i = 2;i < 4;i++){
+        for(int j = 0;j < 2;j++){
+            for(int k = 0;k < 2;k++){
+                bvalue[i][j][k] = bvalue[3][0][0] + (i-3)*1/3*gradient[1][0][0].x + j*1/3*gradient[1][0][0].y + k*1/3*gradient[1][0][0].z;
+            }
+        }
+    }
+
+    for(int i = 2;i < 4;i++){
+        for(int j = 2;j < 4;j++){
+            for(int k = 0;k < 2;k++){
+                bvalue[i][j][k] = bvalue[3][3][0] + (i-3)*1/3*gradient[1][1][0].x + (j-3)*1/3*gradient[1][1][0].y + k*1/3*gradient[1][1][0].z;
+            }
+        }
+    }
+
+    for(int i = 2;i < 4;i++){
+        for(int j = 0;j < 2;j++){
+            for(int k = 2;k < 4;k++){
+                bvalue[i][j][k] = bvalue[3][0][3] + (i-3)*1/3*gradient[1][0][1].x + j*1/3*gradient[1][0][1].y + (k-3)*1/3*gradient[1][0][1].z;
+            }
+        }
+    }
+
+    for(int i = 0;i < 2;i++){
+        for(int j = 2;j < 4;j++){
+            for(int k = 0;k < 2;k++){
+                bvalue[i][j][k] = bvalue[0][3][0] + i*1/3*gradient[0][1][0].x + (j-3)*1/3*gradient[0][1][0].y + k*1/3*gradient[0][1][0].z;
+            }
+        }
+    }
+
+    for(int i = 0;i < 2;i++){
+        for(int j = 2;j < 4;j++){
+            for(int k = 2;k < 4;k++){
+                bvalue[i][j][k] = bvalue[0][3][3] + i*1/3*gradient[0][1][1].x + (j-3)*1/3*gradient[0][1][1].y + (k-3)*1/3*gradient[0][1][1].z;
+            }
+        }
+    }
+
+    for(int i = 0;i < 2;i++){
+        for(int j = 0;j < 2;j++){
+            for(int k = 2;k < 4;k++){
+                bvalue[i][j][k] = bvalue[0][0][3] + i*1/3*gradient[0][0][1].x + j*1/3*gradient[0][0][1].y + (k-3)*1/3*gradient[0][0][1].z;
+            }
+        }
+    }
+
+    for(int i = 2;i < 4;i++){
+        for(int j = 2;j < 4;j++){
+            for(int k = 2;k < 4;k++){
+                bvalue[i][j][k] = bvalue[3][3][3] + (i-3)*1/3*gradient[1][1][1].x + (j-3)*1/3*gradient[1][1][1].y + (k-3)*1/3*gradient[1][1][1].z;
+            }
+        }
+    }
+
+    // bvalue has been calculated
+    // now for the cubic interpolation
+
+    float val = 0;
+
+    for(int i = 0;i < 4;i++){
+        for(int j = 0;j < 4;j++){
+            for(int k = 0;k < 4;k++){
+                val += bvalue[i][j][k]*Bvalue(pt.x,i,3)*Bvalue(pt.y,j,3)*Bvalue(pt.z,k,3);
+            }
+        }
+    }
+
+    // int ind = (int)floor(pt.x);
+    // ind += (int)floor(pt.y)*vol->gridx;
+    // ind += (int)floor(pt.z)*vol->gridx*vol->gridy;
+    // // val =  ((uint8_t*)vol->data)[ind]/MAX_UI8;
     return val;
 }
 
@@ -87,12 +204,128 @@ gradient_nearest_ui8(const VRVOL*vol, glm::vec3 pt)
     //we can do this more effieinctly by explicitly looking up the data, but
     //this is a better representation.
     glm::vec3 grad;
-    grad.x = interpolate_nearest_ui8(vol,pt+glm::vec3(1,0,0))-
-                interpolate_nearest_ui8(vol,pt-glm::vec3(1,0,0));
-    grad.y = interpolate_nearest_ui8(vol,pt+glm::vec3(0,1,0))-
-                interpolate_nearest_ui8(vol,pt-glm::vec3(0,1,0));
-    grad.z = interpolate_nearest_ui8(vol,pt+glm::vec3(0,0,1))-
-                interpolate_nearest_ui8(vol,pt-glm::vec3(0,0,1));
+    grad.x = (interpolate_nearest_ui8(vol,pt+glm::vec3(1,0,0))-
+                interpolate_nearest_ui8(vol,pt-glm::vec3(1,0,0)))/2;
+    grad.y = (interpolate_nearest_ui8(vol,pt+glm::vec3(0,1,0))-
+                interpolate_nearest_ui8(vol,pt-glm::vec3(0,1,0)))/2;
+    grad.z = (interpolate_nearest_ui8(vol,pt+glm::vec3(0,0,1))-
+                interpolate_nearest_ui8(vol,pt-glm::vec3(0,0,1)))/2;
+    return grad;
+}
+
+/*
+ * Returns the gradient at pt, using tricubic.
+ */
+glm::vec3
+gradient_cubic_ui8(const VRVOL*vol, glm::vec3 pt)
+{
+    //we can do this more effieinctly by explicitly looking up the data, but
+    //this is a better representation.
+    glm::vec3 grad;
+
+    glm::vec3 gradient[2][2][2];
+
+    for(int i = 0;i < 2;i++){
+        for(int j = 0;j < 2;j++){
+            for(int k = 0;k < 2;k++){
+                glm::vec3 tempgradient = gradient_nearest_ui8(vol,pt+glm::vec3(i,j,k));
+                gradient[i][j][k] = tempgradient;
+            }
+        }
+    }
+
+    float bvalue[4][4][4];
+
+    bvalue[0][0][0] = interpolate_nearest_ui8(vol,pt+glm::vec3(0,0,0));
+    bvalue[3][0][0] = interpolate_nearest_ui8(vol,pt+glm::vec3(1,0,0));
+    bvalue[3][3][0] = interpolate_nearest_ui8(vol,pt+glm::vec3(1,1,0));
+    bvalue[3][0][3] = interpolate_nearest_ui8(vol,pt+glm::vec3(1,0,1));
+    bvalue[0][3][0] = interpolate_nearest_ui8(vol,pt+glm::vec3(0,1,0));
+    bvalue[0][3][3] = interpolate_nearest_ui8(vol,pt+glm::vec3(0,1,1));
+    bvalue[0][0][3] = interpolate_nearest_ui8(vol,pt+glm::vec3(0,0,1));
+    bvalue[3][3][3] = interpolate_nearest_ui8(vol,pt+glm::vec3(1,1,1));
+
+
+    for(int i = 0;i < 1;i++){
+        for(int j = 0;j < 1;j++){
+            for(int k = 0;k < 1;k++){
+                bvalue[i][j][k] = bvalue[0][0][0] + i*1/3*gradient[0][0][0].x + j*1/3*gradient[0][0][0].y + k*1/3*gradient[0][0][0].z;
+            }
+        }
+    }
+
+    for(int i = 2;i < 3;i++){
+        for(int j = 0;j < 1;j++){
+            for(int k = 0;k < 1;k++){
+                bvalue[i][j][k] = bvalue[3][0][0] + (i-3)*1/3*gradient[3][0][0].x + j*1/3*gradient[3][0][0].y + k*1/3*gradient[3][0][0].z;
+            }
+        }
+    }
+
+    for(int i = 2;i < 3;i++){
+        for(int j = 2;j < 3;j++){
+            for(int k = 0;k < 1;k++){
+                bvalue[i][j][k] = bvalue[3][3][0] + (i-3)*1/3*gradient[3][3][0].x + (j-3)*1/3*gradient[3][3][0].y + k*1/3*gradient[3][3][0].z;
+            }
+        }
+    }
+
+    for(int i = 2;i < 3;i++){
+        for(int j = 0;j < 1;j++){
+            for(int k = 2;k < 3;k++){
+                bvalue[i][j][k] = bvalue[3][0][3] + (i-3)*1/3*gradient[3][0][3].x + j*1/3*gradient[3][0][3].y + (k-3)*1/3*gradient[3][0][3].z;
+            }
+        }
+    }
+
+    for(int i = 0;i < 1;i++){
+        for(int j = 2;j < 3;j++){
+            for(int k = 0;k < 1;k++){
+                bvalue[i][j][k] = bvalue[0][3][0] + i*1/3*gradient[0][3][0].x + (j-3)*1/3*gradient[0][3][0].y + k*1/3*gradient[0][3][0].z;
+            }
+        }
+    }
+
+    for(int i = 0;i < 1;i++){
+        for(int j = 2;j < 3;j++){
+            for(int k = 2;k < 3;k++){
+                bvalue[i][j][k] = bvalue[0][3][3] + i*1/3*gradient[0][3][3].x + (j-3)*1/3*gradient[0][3][3].y + (k-3)*1/3*gradient[0][3][3].z;
+            }
+        }
+    }
+
+    for(int i = 0;i < 1;i++){
+        for(int j = 0;j < 1;j++){
+            for(int k = 2;k < 3;k++){
+                bvalue[i][j][k] = bvalue[0][0][3] + i*1/3*gradient[0][0][3].x + j*1/3*gradient[0][0][3].y + (k-3)*1/3*gradient[0][0][3].z;
+            }
+        }
+    }
+
+    for(int i = 2;i < 3;i++){
+        for(int j = 2;j < 3;j++){
+            for(int k = 2;k < 3;k++){
+                bvalue[i][j][k] = bvalue[3][3][3] + (i-3)*1/3*gradient[3][3][3].x + (j-3)*1/3*gradient[3][3][3].y + (k-3)*1/3*gradient[3][3][3].z;
+            }
+        }
+    }
+
+    float val = 0;
+
+    // for(int i = 0;i < 2;i++){
+    //     for(int j = 0;j < 2;j++){
+    //         for(int k = 0;k < 2;k++){
+    //             val += ;
+    //         }
+    //     }
+    // }
+
+    grad.x = (interpolate_nearest_ui8(vol,pt+glm::vec3(1,0,0))-
+                interpolate_nearest_ui8(vol,pt-glm::vec3(1,0,0)))/2;
+    grad.y = (interpolate_nearest_ui8(vol,pt+glm::vec3(0,1,0))-
+                interpolate_nearest_ui8(vol,pt-glm::vec3(0,1,0)))/2;
+    grad.z = (interpolate_nearest_ui8(vol,pt+glm::vec3(0,0,1))-
+                interpolate_nearest_ui8(vol,pt-glm::vec3(0,0,1)))/2;
     return grad;
 }
 
@@ -192,7 +425,7 @@ float vrv_interpolate(const VRVOL* vol, glm::vec3 pt)
 {
     switch(vol->type|vol->interp){
         case VRV_UINT8 | VI_NEAREST:
-            return interpolate_linear_ui8(vol,pt);
+            return interpolate_cubic_ui8(vol,pt);
         default:
             EPRINT("BAD VOLUME TYPE or INTERPOLATION METHOD\n");
             return 0;
@@ -209,6 +442,21 @@ glm::vec3 vrv_gradient(const VRVOL* vol, glm::vec3 pt){
     }
 }
 
+//B value
+float Bvalue(float x, int index, int range)
+{
+    x = x - (int)floor(x);
+    float B = (factorial(range)/(factorial(index)*factorial(range-index)))*powf(1-x,range-index)*powf(x,index);
+    return B;
+}
+
+//factorial
+unsigned int factorial(unsigned int n)
+{
+    if (n == 0)
+      return 1;
+    return n*factorial(n-1);
+}
 
 /****************************************************************************************************
  * The code was developed by Garrett Aldrich for [ECS 277] Advanced Visualization at UC Davis.
